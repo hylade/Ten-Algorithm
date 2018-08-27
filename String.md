@@ -216,3 +216,137 @@ bool Next_permutation(char a[])
 }
 ```
 
+
+
+### KMP 算法
+
+对于给定文本串 text 和模式串 pattern ，从文本串 text 中找出模式串 pattern 第一次出现的位置
+
+记文本串长度为 N ，模式串长度为 M ，则 BF算法的时间复杂度为 O(MN) ,空间复杂度为 O(1)
+
+KMP 算法是对于 BF 算法的改进，是一种线性时间复杂度的字符串匹配算法，其时间复杂度为 O(M+N)  ，空间复杂度为 O(M)
+
+```C++
+// 查找 s 中首次出现 p 的位置
+int BruteForceSearch(const char* s, const char* p)
+{
+    int i = 0; // 当前匹配到的原始串位置
+    int j = 0; // 模式串的匹配位置
+    int size = strlen(s);
+    int psize = strlen(p);
+    
+    while ((i < size) && (j < psize))
+    {
+        if (s[i+j] == p[j]) // 若匹配，则模式串匹配位置后移
+        {
+            j++;
+        }
+        else // 不匹配，则比对下一个位置，模式串回溯到首位
+        {
+            i++;
+            j = 0;
+        }
+    }
+    if (j >= psize) return 1;
+    else return -1;
+}
+```
+
+
+
+#### 分析 BF 和 KMP 的区别
+
+假设当前文本串 text 匹配到 i 的位置，模式串 pattern 串匹配到 j 位置
+
+BF 算法中，如果当前字符匹配成功，即 text[i+j] == pattern[j] ，令 i++ ， j++ ，继续匹配下一个字符；若匹配失败，即 text[i+j] != text[j] 时，令 i++ ，j = 0 ，即每次匹配失败的情况下，模式串 pattern 相当于文本串 text 向右移动了一位
+
+在 BF 中，为什么模式串的索引需要回溯呢？因为模式串中可能存在重复字符，若模式串中的字符两两不相等，此时只需要编写线性时间代码即可
+
+在 KMP 中的字符串比较机制，即当字符出现不匹配时，将 pattern 串向右移动最少 1 位，最多 j-1 位，保证头串与尾串相同，再进行字符比较；即对于模式串的位置 j ，考察 Pattern(j-1) = p0p1... p(j-2)p(j-1) ，查找字符串 Pattern(j-1) 的最大相等 k 前缀和 k 后缀
+
+此时计算 next[j] 时，考察的字符串是模式串前 j-1 个字符，与 pattern[j] 字符无关
+
+即查找满足条件的最大的 k ，使 p0p1... p(k-2)p(k-1) = p(j-k)p(j-k+1)... p(j-2)p(j-1)
+
+
+
+#### next 的递推关系
+
+对于模式串的位置 j ，若有 next[j] = k ，即 p0p1... p(k-2)p(k-1) = p(j-k)p(j-k+1)... p(j-2)p(j-1) 则对于模式串位置 j+1 ，考察 pj ：若 p[k] == p[j] ，则 next[j+1] = next[j] + 1 ；若 p[k] != p[j] 时，记 h = next[k] ；若 p[h] == p[j] ，则 next[j+1] = h + 1 ，否则重复此过程
+
+next[k] 表示 k 位置前 k 个字符中，首尾相同的字符串长度为 h ，由于 next[j] = next[k] 相同，故 j 位置的前 k 个字符中，首尾也存在 h 个字符相同，故若 p[h] == p[j] ，那么 next[j+1] = h + 1 ，长度能够增加 1  
+
+```C++
+// 1
+void CalcNext(char* p, int next[])
+{
+    int nLen = strlen(p); // 模板字符串长度
+    next[0] = 0; // 模板字符串的第一个字符的最大前后缀长度为 0
+    int k = 0; // 最大前后缀长度
+    for (j = 1,; j <= nLen; j++) // j 为模板字符串下标
+    {
+		while (k > 0 && p[j] != p[k]) k = next[k-1]; // 递归求出 p[0]...p[j] 的最大前后缀长度
+        if (p[j] == p[k]) k++; // 若想等，最大相同的前后缀长度 +1
+        next[j] = k;
+    }
+}
+```
+
+
+
+```C++
+void get_next()
+{
+    int i = 0, j = -1;
+    next[0] = -1;
+    while (i < len)
+    {
+        if (j == -1 || str[i] == str[j])
+        {
+            i++, j++;
+            if (str[i] != str[j]) next[i] = j;
+            else next[i] = next[j];
+        }
+        else j = next[j];
+    }
+}
+```
+
+
+
+#### KMP 代码
+
+```C++
+// 匹配的时间复杂度为 O(n) ，计算 next 的时间复杂度为 O(m) ，故整体时间复杂度为 O(m+n)
+int KMP(const char T[], const char P[], int next[])
+{
+    int n, m;
+    int i, q = 0;
+    n = strlen(T);
+    m = strlen(P);
+    CalcNext(P, next);
+    
+    for (int i = 0; i < n; i++)
+    {
+        while (q > 0 && P[q] != T[i]) q = next[q-1];
+        if (P[q] == T[i]) q++;
+        if (q == m) printf("Yes\n");
+    }
+}
+```
+
+
+
+#### 进一步分析 next
+
+文本串若匹配到 i ，模式串匹配到 j ，此刻，若 text[i] != pattern[j] 即失配情况：若 next[j] == k ，说明模式串应该从 j 滑动到 k 位置；但若此时 pattern[j] == pattern[k] ，那么由于 text[i] != pattern[j] ，所以 text[i] != pattern[k] ，即 i 和 k 也不能匹配，所以应该继续滑动到 next[k] 。即在原始的 next 数组中，若 next[j] = k 并且 pattern[j] == pattern[k] ，next[j] 可以直接等于 next[k]
+
+
+
+#### KMP 应用： PowerString 问题
+
+给定一个长度为 n 的字符串 S ，如果存在一个字符串 T ，重复若干次 T 能够得到 S ，那么 S 叫做周期串， T 叫做 S 的一个周期
+
+如 字符串 abababab 是周期串， abab 和 ab 都是它的周期，其中 ab 是它的最小周期；设计一个算法，计算 S 的最小周期，如果 S 不存在周期，则返回空串
+
+计算 S 的 next 数组，记 k = next[len-1] ， p = len - k ；若 len 能整除 p ，则 p 就是最小周期长度，前 p 个字符就是最小周期
