@@ -277,37 +277,24 @@ BF 算法中，如果当前字符匹配成功，即 text[i+j] == pattern[j] ，�
 next[k] 表示 k 位置前 k 个字符中，首尾相同的字符串长度为 h ，由于 next[j] = next[k] 相同，故 j 位置的前 k 个字符中，首尾也存在 h 个字符相同，故若 p[h] == p[j] ，那么 next[j+1] = h + 1 ，长度能够增加 1  
 
 ```C++
-// 1
-void CalcNext(char* p, int next[])
+void get_next(char* p, int next[])
 {
-    int nLen = strlen(p); // 模板字符串长度
-    next[0] = 0; // 模板字符串的第一个字符的最大前后缀长度为 0
-    int k = 0; // 最大前后缀长度
-    for (j = 1,; j <= nLen; j++) // j 为模板字符串下标
-    {
-		while (k > 0 && p[j] != p[k]) k = next[k-1]; // 递归求出 p[0]...p[j] 的最大前后缀长度
-        if (p[j] == p[k]) k++; // 若想等，最大相同的前后缀长度 +1
-        next[j] = k;
-    }
-}
-```
-
-
-
-```C++
-void get_next()
-{
-    int i = 0, j = -1;
+    int pLen = strlen(p);
     next[0] = -1;
-    while (i < len)
+    int k = -1;
+    int j = 0;
+    while (j < pLen)
     {
-        if (j == -1 || str[i] == str[j])
+        // p[k] 表示前缀， p[j] 表示后缀
+    	if (k == -1 || p[j] == p[k])
         {
-            i++, j++;
-            if (str[i] != str[j]) next[i] = j;
-            else next[i] = next[j];
+            k++, j++;
+            next[j] = k;
         }
-        else j = next[j];
+        else
+        {
+            k = next[k];
+        }
     }
 }
 ```
@@ -318,20 +305,26 @@ void get_next()
 
 ```C++
 // 匹配的时间复杂度为 O(n) ，计算 next 的时间复杂度为 O(m) ，故整体时间复杂度为 O(m+n)
-int KMP(const char T[], const char P[], int next[])
+int KmpSearch(char* s, char* p)
 {
-    int n, m;
-    int i, q = 0;
-    n = strlen(T);
-    m = strlen(P);
-    CalcNext(P, next);
+    int i = 0 ;
+    int j = 0;
+    int sLen = strlen(s);
+    int pLen = strlen(p);
     
-    for (int i = 0; i < n; i++)
+    while (i < sLen && j < pLen)
     {
-        while (q > 0 && P[q] != T[i]) q = next[q-1];
-        if (P[q] == T[i]) q++;
-        if (q == m) printf("Yes\n");
+        // 如果 j = -1；或者当前字符匹配成功（即 s[i] == p[j]），都令 i++, j++
+        if (j == -1 || s[i] == p[j])
+        {
+            i++, j++;
+        }
+        // 如果 j != -1, 且当前字符匹配失败（即 s[i] != p[j]），则令 i 不变， j = next[j]
+        // next[j] 的值即为下个 j 所对应的值
+        else j = next[j];
     }
+    if (j == pLen) return i - j;
+    else return -1;
 }
 ```
 
@@ -341,12 +334,250 @@ int KMP(const char T[], const char P[], int next[])
 
 文本串若匹配到 i ，模式串匹配到 j ，此刻，若 text[i] != pattern[j] 即失配情况：若 next[j] == k ，说明模式串应该从 j 滑动到 k 位置；但若此时 pattern[j] == pattern[k] ，那么由于 text[i] != pattern[j] ，所以 text[i] != pattern[k] ，即 i 和 k 也不能匹配，所以应该继续滑动到 next[k] 。即在原始的 next 数组中，若 next[j] = k 并且 pattern[j] == pattern[k] ，next[j] 可以直接等于 next[k]
 
+```C++
+void GetNextval(char* p, int next[])
+{
+    int pLen = strlen(p);
+    next[0] = -1;
+    int k = -1;
+    int j = 0;
+    while (j < pLen)
+    {
+        if (k == -1 || p[j] == p[k])
+        {
+            j++, k++;
+            if (p[j] != p[k])
+                next[j] = k;
+            else
+                next[j] = next[k];
+        }
+        else
+            k = next[k];
+    }
+}
+```
+
 
 
 #### KMP 应用： PowerString 问题
 
-给定一个长度为 n 的字符串 S ，如果存在一个字符串 T ，重复若干次 T 能够得到 S ，那么 S 叫做周期串， T 叫做 S 的一个周期
-
-如 字符串 abababab 是周期串， abab 和 ab 都是它的周期，其中 ab 是它的最小周期；设计一个算法，计算 S 的最小周期，如果 S 不存在周期，则返回空串
+给定一个长度为 n 的字符串 S ，如果存在一个字符串 T ，重复若干次 T 能够得到 S ，那么 S 叫做周期串， T 叫做 S 的一个周期。如 字符串 abababab 是周期串， abab 和 ab 都是它的周期，其中 ab 是它的最小周期；设计一个算法，计算 S 的最小周期，如果 S 不存在周期，则返回空串
 
 计算 S 的 next 数组，记 k = next[len-1] ， p = len - k ；若 len 能整除 p ，则 p 就是最小周期长度，前 p 个字符就是最小周期
+
+```C++
+// 若 len % (len - next1[len]) ！= 0 说明不循环
+// 否则循环节就是 len % (len - next1[len])
+#include <iostream>
+#include <cstdio>
+#include <string.h>
+using namespace std;
+
+char str[10000];
+int next1[10000];
+int len;
+
+void get_next(char* p)
+{
+    int pLen = strlen(p);
+    next1[0] = -1;
+    int k = -1;
+    int j = 0;
+    while (j < pLen)
+    {
+        if (k == -1 || p[j] == p[k])
+        {
+            j++, k++;
+            if (p[j] != p[k])
+                next1[j] = k;
+            else
+                next1[j] = next1[k];
+        }
+        else
+            k = next1[k];
+    }
+}
+
+int main()
+{
+    while (~scanf("%s", str) && strcmp(str, ".")) // strcmp 用于比较两个字符是否相等，相等返回 true 
+        									  // 否则返回 false
+    {
+        len = strlen(str);
+        get_next(str);
+        int ans = 1;
+        if (len % (len - next1[len]) == 0)
+            ans = len / (len - next1[len]);
+        printf("%d", ans);
+    }
+
+    return 0;
+}
+
+```
+
+
+
+### 求字符串的最长回文子串
+
+回文子串的含义：对于给定字符串 str ，若 s 同时满足以下条件： s 是 str 的子串，且 s 是回文串，那么 s 是 str 的回文子串。算法要求是求 str 中最长的那个回文子串
+
+#### 解法一：枚举中心位置
+
+```C++
+int LongestPalindrome(const char *s, int n)
+{
+    int i, j, max;
+    if (s == 0 || n < 1)
+        return 0;
+    max = 0;
+    
+    for (int i = 0; i < n; i++) // i 为回文串的中间位置
+    {
+        for (int j = 0; (i-j >= 0) && (i+j < n); j++) // 若回文串是奇数时
+        {
+            if (s[i-j] != s[i+j])
+                break;
+            if (j * 2 + 1 > max)
+                max = j * 2 + 1;
+        }
+        for (int j = 0; (i-j >= 0) && (i+j+1 < n); j++) // 若回文串是偶数时
+        {
+            if (s[i-j] != s[i+j+1])
+                break;
+            if (j * 2 + 2 > max)
+                max = j * 2 + 2;
+        }
+    }
+    return max;
+}
+```
+
+
+
+#### 算法解析 step 1 ——预处理
+
+由于回文串中有奇数和偶数的不同，所以判断一个字符串是否为回文串需要分开写，这将造成代码的拖沓
+
+但由于一个长度为 n 的字符串，共有 n-1 个间隔，再加上首字符的前面和末字符的后面，共有 n+1 个空，所以两者放在一起时，将有 2n+1 个字符，此时必将是奇数
+
+abbc - #a#b#b#c#
+
+aba - #a#b#a#
+
+因此，若将待计算母串拓展为 gap 串后，计算回文子串的过程中，只需要考虑奇数匹配即可
+
+
+
+####数组 intP[]
+
+若将字符串进行预处理，并在首位添加 $ 后变为 S[] ，如 12212321 将变为 
+
+$#1#2#2#1#2#3#2#1#
+
+用一个数组 P[i] 来记录以字符 S[i] 为中心的最长回文子串向左/右扩张的长度（包括 S[i]），比如 S 和 P 的关系
+
+$ # 1 # 2 # 2 # 1 # 2 # 3 # 2 # 1 #
+
+P 1 2 1 2 5 2 1 4 1 2 1 6 1 2 1 2 1 
+
+此时 P[i] - 1 正好是原字符串中回文串的总长度
+
+当 P[i] 为偶数时，由于此时总的回文串中一半是 # 一半是数字，故 x = P[i] / 2 ，此时回文子串长度为 2x - 1 恰好等于 p[i] - 1
+
+但是 P[i] 为奇数时，不用考虑，因为此时只有两种情况，一种是奇数个数字，偶数个 # ，这种情况不满足；另一种是偶数个数字，奇数个 # 
+
+
+
+#### 算法核心
+
+若假设已经得到了前 i 个值，考察 i+1 如何计算，即 P[0... i-1] 值已知的前提下，计算 P[i] 的值，换句话说，算法的核心是在 P[0... i-1] 已知的前提下，能否给 P[i] 的计算提供一点有用的信息
+
+若通过简单的遍历，已经得到了 i 个三元组，{k, p[k], k+P[k]} ，0 <= k <= i-1 ，此时以 k 为中心的字符形成的最大回文子串的最右位置是 k+p[k]-1 
+
+以 k+p[k] 为关键字，挑选出这 i 个三元组中， k+P[k] 最大的那个三元组，不妨记作 (id, P[id], id+P[id]) ，进一步简化，将 id+P[id] 记为 mx ，故三元组为 (id, P[id], mx) ，这个三元组的含义非常明显，所有 i 个三元组中，向右能到达的最远距离为 mx 
+
+当计算 P[i] 时，便考察 i 是否落在了区间 [0, mx) 中，若 i 在 mx 的右侧，说明 [0, mx) 没有能够控制住 i ，对于 P[0... i-1] 的已知信息，无法给 P[i] 的计算带来有价值信息
+
+若 i 在 mx 的左侧时，说明 [0, mx) 能够控制 i ，能够靠前述条件给出信息
+
+
+
+#### Manacher 递推关系
+
+记 i 关于 id 的对称点为 j (=2 * id - i) ，若此时满足条件 mx - i (j - my) > p[j]
+
+my 为 mx 关于 id 的对称点(my = 2 * id - mx)
+
+由于以 S[id] 为中心的最大回文子串为 S[my+1, ... id..., mx-1] ，故 S[my+1, ..., id] 与 S[id, ..., mx-1] 是对称的，而 i 与 j 是关于 id 对称的，因此此时 P[i] = P[j] 
+
+
+
+若满足条件 mx - i < P[j] 时，由于以 S[id] 为中心的最大回文子串为 S[my+1, ..., id, ..., mx-1] ，即 S[my+1, ..., id] 与 S[id, ..., mx-1] 对称，而 i 和 j 关于 id 对称，因此 P[i] 至少等于 mx - i
+
+```C++
+void Manacher(char* s, int* P)
+{
+    int size = strlen(s);
+    P[0] = 1;
+    int id = 0;
+    int mx = 1;
+    for (int i = 1; i < size; i++)
+    {
+        if (mx > 1)
+        {
+            P[i] = min(P[2*id-i], mx-i); // 当能控制 i 时，取两种情况的较小值
+        }
+        else
+        {
+            P[i] = 1; // 不能控制 i 
+        } 
+        for (; s[i+P[i]] == s[i-P[i]]; p[i]++) // 尝试暴力扩充
+        
+        if (mx < i + P[i])
+        {
+            mx = i + P[i];
+            id = i;
+        }
+    }
+}
+```
+
+
+
+### BM 算法
+
+#### 坏字符
+
+首先将字符串 s 与模式串 p 头部对齐，从尾部开始比较；当尾部字符不匹配时，那么只要不匹配，说明字符串前 strlen(p) 个字符均不是要找的结果。此时字符串中的检验字符被称为坏字符，即不匹配字符，当该字符不存在于模式串 p 中，将意味着可以直接将 p 的头部移到坏字符的后一位
+
+
+
+#### 坏字符引起的模式滑动
+
+若尾部比较发现字符不匹配，但是字符存在于模式串中时，此时需要将该字符与模式串中相应的字符对齐
+
+
+
+#### 坏字符规则
+
+后移位数 = 坏字符位置 - 坏字符在模式串中最右出现的位置；若不存在于模式串中，那么最右出现位置为 -1
+
+坏字符位置将根据模式串中相应位置确定
+
+
+
+#### 好后缀
+
+若多个尾部字符匹配时，被称为好后缀，即所有尾部匹配的字符串，如 "MPLE" 都匹配成功时， "MPLE" ， "PLE" ， "LE"  ， "E" 都是好后缀
+
+
+
+#### 好后缀规则
+
+后移位数 = 好后缀的位置 - 好后缀在模式串中剩余部分中最右侧出现的位置
+
+好后缀位置是指第一个好后缀字符在模式串中的位置
+
+
+
